@@ -1,13 +1,17 @@
 package utils;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Classification class given to classified documents.
  *
  * @author <a href=mailto:markovd@students.zcu.cz>David Markov</a>
  */
 public class ClassificationClass {
+
+    private static final Map<String, Integer> numberOfDocumentsInClasses = new HashMap<>();
     private final String NAME;
-    private int documentsInClass;
 
     /**
      * Creates new classification class instance with given name.
@@ -16,7 +20,9 @@ public class ClassificationClass {
      */
     public ClassificationClass(String name) {
         this.NAME = name;
-        this.documentsInClass = 0;
+        if (!numberOfDocumentsInClasses.containsKey(this.NAME)) {
+            numberOfDocumentsInClasses.put(this.NAME, 0);
+        }
     }
 
     /**
@@ -34,30 +40,39 @@ public class ClassificationClass {
      * @return number of documents that fall into this classification class.
      */
     public int getDocumentsInClass() {
-        return documentsInClass;
+        return numberOfDocumentsInClasses.get(this.NAME);
     }
 
     /**
      * Increments the number of documents that fall into this classification class by one.
      */
     public void incDocumentsInClass() {
-        documentsInClass++;
+        numberOfDocumentsInClasses.replace(this.NAME, getDocumentsInClass() + 1);
     }
 
     /**
      * Decrements the number of documents that fall into this classification class by one.
      */
     public void decDocumentsInClass() {
-        documentsInClass--;
+        numberOfDocumentsInClasses.replace(this.NAME, getDocumentsInClass() - 1);
     }
 
     /**
-     * Returns true if this classification class has given name.
+     * Returns true if this classification class is the same (has the same name) as given
+     * classification class. Returns {@code false} if parameter is {@code null} or is not
+     * an instance of ClassificationClass.
      *
-     * @param name name of clasification class
-     * @return true if this classification class has given name
+     * @param object compared classification class
+     * @return true if this classification class has the same name
      */
-    public boolean equals(String name) {
-        return name.equals(this.NAME);
+    @Override
+    public boolean equals(Object object) {
+        if (!(object instanceof ClassificationClass)) {
+            return false;
+        }
+
+        ClassificationClass obj = (ClassificationClass) object;
+        return obj.getName().equals(this.NAME);
     }
+
 }

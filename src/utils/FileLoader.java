@@ -1,9 +1,9 @@
 package utils;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Utility class to load data from files.
@@ -20,11 +20,45 @@ public class FileLoader {
     /**
      * Loads document at given path.
      *
-     * @param filePath path do file to be loaded as document
+     * @param file existing document to be loaded
      * @return loaded document
      */
-    public Document loadDocument(String filePath) {
-        return null;
+    public Document loadDocument(File file) {
+        try {
+            reader = new BufferedReader(new FileReader(file));
+            Document document = new Document();
+            String line;
+            StringBuilder buffer = new StringBuilder();
+            boolean isFirstLine = true;
+
+            while ((line = reader.readLine()) != null) {
+                if (line.isEmpty()) {
+                    continue;
+                }
+                if (isFirstLine) {   //if we are loading the first line of document, we are loading it's classification classes
+                    String[] classes = line.split(" ");
+                    List<ClassificationClass> classificationClasses = new ArrayList<>();
+
+                    for (String className : classes) {
+                        classificationClasses.add(new ClassificationClass(className));
+                    }
+
+                    document.setClassificationClasses(classificationClasses);
+                    isFirstLine = false;
+                } else {
+                    buffer.append(line);
+                }
+            }
+            document.setContent(buffer.toString().replaceAll("[^a-zA-Zá-žÁ-Ž ]", "").toLowerCase());
+            return document;
+
+        } catch (FileNotFoundException fileNotFoundException) {
+            System.out.println("File was not found! (file: " + file.getAbsolutePath() + ")");
+            return null;
+        } catch (IOException ioException) {
+            System.out.println("Error while reading from file! (file: " + file.getAbsolutePath() + ")");
+            return null;
+        }
     }
 
     /**
@@ -34,7 +68,29 @@ public class FileLoader {
      * @return List of loaded training documents
      */
     public List<Document> loadTrainingSet(String folderPath) {
-        return null;
+        File trainingSetFolder = new File(folderPath);
+        if (!trainingSetFolder.isDirectory()) {
+            System.out.println("Directory in given path was not found! (path: " + folderPath + ")");
+            return null;
+        }
+
+        List<Document> trainingSet = new ArrayList<>();
+        try {
+            for (File file : Objects.requireNonNull(trainingSetFolder.listFiles())) {
+
+                Document trainingDocument = loadDocument(file);
+                for (ClassificationClass docClass : trainingDocument.getClassificationClasses()) {
+                    docClass.incDocumentsInClass();
+                }
+
+                trainingSet.add(trainingDocument);
+            }
+        } catch (Exception e) {
+            System.out.println("Directory is empty! (path: " + folderPath + ")");
+            return null;
+        }
+
+        return trainingSet;
     }
 
     /**
