@@ -2,6 +2,7 @@ package app;
 
 import classifier.NaiveBayesClassifier;
 import feature.IFeatureAlgorithm;
+import feature.MutualInformation;
 import feature.TFIDF;
 import feature.TermFrequency;
 import utils.ClassificationClass;
@@ -30,13 +31,17 @@ public class DocumentClassifierApp {
      */
     public static final String NAIVE_BAYES_CLASSIFIER = "bayes";
     /**
-     * String representing name of {} passed as parameter in command-line.
+     * String representing name of {@link TermFrequency} algorithm, passed as parameter in command-line.
      */
     public static final String TF_FEATURE_ALG = "tf";
     /**
-     * String representing name of {} passed as parameter in command-line.
+     * String representing name of {@link TFIDF} algorithm, passed as parameter in command-line.
      */
     public static final String TF_IDF_FEATURE_ALG = "tfidf";
+    /**
+     * String representing name of {@link MutualInformation} algorithm, passed as parameter in command-line.
+     */
+    public static final String MI_FEATURE_ALG = "mi";
     /**
      * Number of features that will represent each document.
      */
@@ -59,11 +64,11 @@ public class DocumentClassifierApp {
     public void start(String[] args) {
         switch (args.length) {
             case TRAINING_PARAMS_COUNT:
-                System.out.println("Executing supervised learning.");
+                System.out.println("Executing supervised learning...");
                 doSupervisedLearning(args[0], args[1], args[2], args[3], args[4], args[5]);
                 break;
             case CLASSIFYING_PARAMS_COUNT:
-                System.out.println("Executing input classification.");
+                System.out.println("Executing input classification...");
                 //TODO klasifikace textu z GUI
                 break;
             default:
@@ -95,8 +100,8 @@ public class DocumentClassifierApp {
             System.out.println("No feature algorithm with this name found! (passed name: " + featureAlgorithm + ")");
             System.out.println("Available feature algorithms:\n<passed_name> - <description>");
             System.out.println("tf - term frequency (document frequency) algorithm");
-            System.out.println("tfidf - term frequency-inverse document frequency");
-            //TODO třetí algoritmus
+            System.out.println("tfidf - term frequency-inverse document frequency algorithm");
+            System.out.println("mi - mutual information algorithm");
             return;
         }
         fileLoader = new FileLoader();
@@ -125,8 +130,8 @@ public class DocumentClassifierApp {
      * @return true if algorithm with given name exists
      */
     public boolean isFeatureAlgorithm(String featureAlgName) {
-        //TODO třetí parametrizační algoritmus
-        return featureAlgName.equals(TF_FEATURE_ALG) || featureAlgName.equals(TF_IDF_FEATURE_ALG);
+        return featureAlgName.equals(TF_FEATURE_ALG) || featureAlgName.equals(TF_IDF_FEATURE_ALG)
+                || featureAlgName.equals(MI_FEATURE_ALG);
     }
 
     /**
@@ -138,16 +143,25 @@ public class DocumentClassifierApp {
     private void createFeatures(String featureAlgName, List<Document> documents) {
         IFeatureAlgorithm featureAlgorithm;
 
-        if (featureAlgName.equals(TF_FEATURE_ALG)) {
-            featureAlgorithm = new TermFrequency();
-        } else if (featureAlgName.equals(TF_IDF_FEATURE_ALG)) {
-            featureAlgorithm = new TFIDF(documents);
-        } else {
-            System.out.println("Invalid feature algorithm name passed! (passed name: " + featureAlgName + ")");
-            return;
+        switch (featureAlgName) {
+            case TF_FEATURE_ALG:
+                featureAlgorithm = new TermFrequency();
+                break;
+            case TF_IDF_FEATURE_ALG:
+                featureAlgorithm = new TFIDF(documents);
+                break;
+            case MI_FEATURE_ALG:
+                featureAlgorithm = new MutualInformation(documents);
+                break;
+            default:
+                System.out.println("Invalid feature algorithm name passed! (passed name: " + featureAlgName + ")");
+                return;
         }
+
+        System.out.println("Computing features...");
         for (Document document : documents) {
             featureAlgorithm.createFeatures(document, FEATURE_COUNT);
         }
+        System.out.println("Features for training set documents computed.");
     }
 }

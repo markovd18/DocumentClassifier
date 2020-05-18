@@ -89,7 +89,7 @@ public class FileLoader {
             System.out.println("Directory is empty! (path: " + folderPath + ")");
             return null;
         }
-
+        System.out.println("Training document set loaded.");
         return trainingSet;
     }
 
@@ -108,7 +108,7 @@ public class FileLoader {
             while ((line = reader.readLine()) != null) {
                 classificationClasses.add(new ClassificationClass(line));
             }
-
+            System.out.println("Classification classes loaded.");
             reader.close();
             return classificationClasses;
         } catch (Exception e) {

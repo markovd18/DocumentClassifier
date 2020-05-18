@@ -2,7 +2,9 @@ package feature;
 
 import utils.Document;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Feature algorithm creating document features (representative words) based on their frequency divided
@@ -10,7 +12,7 @@ import java.util.*;
  *
  * @author <a href=mailto:markovd@students.zcu.cz>David Markov</a>
  */
-public class TermFrequency implements IFeatureAlgorithm {
+public class TermFrequency extends FeatureSelector implements IFeatureAlgorithm {
 
     @Override
     public void createFeatures(Document document, int featureCount) {
@@ -19,16 +21,7 @@ public class TermFrequency implements IFeatureAlgorithm {
         }
 
         Map<String, Double> termFrequencies = computeTermFrequencies(document);
-        List<String> features = new ArrayList<>();
-
-        for (int i = 0; i < featureCount; i++) {
-            if (termFrequencies.isEmpty()) {
-                break;
-            }
-            String term = Collections.max(termFrequencies.entrySet(), Comparator.comparingDouble(Map.Entry::getValue)).getKey();
-            termFrequencies.remove(term);
-            features.add(term);
-        }
+        List<String> features = selectFeatures(termFrequencies, featureCount);
 
         document.setFeatures(features);
     }
@@ -59,7 +52,6 @@ public class TermFrequency implements IFeatureAlgorithm {
         for (Map.Entry<String, Double> pair : termFrequencies.entrySet()) {
             pair.setValue(pair.getValue() / totalNumOfWords);
         }
-
         return termFrequencies;
     }
 }
