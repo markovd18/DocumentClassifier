@@ -62,35 +62,35 @@ public class FileLoader {
     }
 
     /**
-     * Loads training data set in given folder.
+     * Loads data set in given folder.
      *
-     * @param folderPath path to folder with training data
-     * @return List of loaded training documents
+     * @param folderPath path to folder with data
+     * @return List of loaded documents
      */
-    public List<Document> loadTrainingSet(String folderPath) {
-        File trainingSetFolder = new File(folderPath);
-        if (!trainingSetFolder.isDirectory()) {
+    public List<Document> loadDataSet(String folderPath) {
+        File dataSetFolder = new File(folderPath);
+        if (!dataSetFolder.isDirectory()) {
             System.out.println("Directory in given path was not found! (path: " + folderPath + ")");
             return null;
         }
 
-        List<Document> trainingSet = new ArrayList<>();
+        List<Document> dataSet = new ArrayList<>();
         try {
-            for (File file : Objects.requireNonNull(trainingSetFolder.listFiles())) {
+            for (File file : Objects.requireNonNull(dataSetFolder.listFiles())) {
 
-                Document trainingDocument = loadDocument(file);
-                for (ClassificationClass docClass : trainingDocument.getClassificationClasses()) {
+                Document document = loadDocument(file);
+                for (ClassificationClass docClass : document.getClassificationClasses()) {
                     docClass.incDocumentsInClass();
                 }
 
-                trainingSet.add(trainingDocument);
+                dataSet.add(document);
             }
         } catch (Exception e) {
             System.out.println("Directory is empty! (path: " + folderPath + ")");
             return null;
         }
-        System.out.println("Training document set loaded.");
-        return trainingSet;
+        System.out.println("Data set loaded.");
+        return dataSet;
     }
 
     /**

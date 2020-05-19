@@ -1,5 +1,6 @@
 package app;
 
+import classifier.IClassifier;
 import classifier.NaiveBayesClassifier;
 import feature.IFeatureAlgorithm;
 import feature.MutualInformation;
@@ -106,9 +107,12 @@ public class DocumentClassifierApp {
         }
         fileLoader = new FileLoader();
         List<ClassificationClass> classificationClasses = fileLoader.loadClassificationClasses(classesFile);
-        List<Document> trainingSet = fileLoader.loadTrainingSet(trainingSetFolder);
+        List<Document> trainingSet = fileLoader.loadDataSet(trainingSetFolder);
         createFeatures(featureAlgorithm, trainingSet);
 
+        List<Document> testingSet = fileLoader.loadDataSet(testingSetFolder);
+        createFeatures(featureAlgorithm, testingSet);
+        classifyDocuments(classifier, trainingSet, testingSet, classificationClasses);
 
     }
 
@@ -162,6 +166,47 @@ public class DocumentClassifierApp {
         for (Document document : documents) {
             featureAlgorithm.createFeatures(document, FEATURE_COUNT);
         }
-        System.out.println("Features for training set documents computed.");
+        System.out.println("Features for document set computed.");
+    }
+
+    /**
+     * Classifies all documents in given list with given classifier.
+     *
+     * @param classifierName        name of classifier
+     * @param trainingSet           list of training documents
+     * @param testingSet            list of documents to classify
+     * @param classificationClasses list of available classification classes
+     */
+    private void classifyDocuments(String classifierName, List<Document> trainingSet, List<Document> testingSet,
+                                   List<ClassificationClass> classificationClasses) {
+        IClassifier classifier;
+
+        switch (classifierName) {
+            case NAIVE_BAYES_CLASSIFIER:
+                classifier = new NaiveBayesClassifier(trainingSet, classificationClasses);
+                break;
+            default:
+                System.out.println("Invalid classifier name passed! (passed name: " + classifierName + ")");
+                return;
+        }
+
+        double numOfClassifiedUnits = 0;     //double to evade integer division
+        int numOfCorrectlyClassified = 0;
+        System.out.println("Classifying documents...");
+        for (Document document : testingSet) {
+            List<ClassificationClass> classified = classifier.classifyDocument(document);
+            numOfClassifiedUnits += document.getClassificationClasses().size();
+
+            for (ClassificationClass classificationClass : classified) {
+                if (document.getClassificationClasses().contains(classificationClass)) {
+                    numOfCorrectlyClassified++;
+                }
+            }
+        }
+        double accuracy = numOfCorrectlyClassified / numOfClassifiedUnits;
+        System.out.println("Classification complete.");
+        System.out.println("Number of recognised classification classes: " + numOfClassifiedUnits);
+        System.out.println("Number of correctly recognised classification classes: " + numOfCorrectlyClassified);
+        System.out.println("Accuracy: " + accuracy);
     }
 }
