@@ -27,7 +27,7 @@ public class TFIDF extends TermFrequency {
         Map<String, Double> tfidfMap = computeTermFrequencies(document);
 
         for (Map.Entry<String, Double> pair : tfidfMap.entrySet()) {
-            double idf = documents.size() / (getTermOccurence(pair.getKey()) + 1.0);    // +1 adjustment so we never divide by 0
+            double idf = Math.log(documents.size() / (getTermOccurence(pair.getKey()) + 1.0));    // +1 adjustment so we never divide by 0
             pair.setValue(pair.getValue() * idf);
         }
 

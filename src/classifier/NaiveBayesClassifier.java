@@ -51,7 +51,7 @@ public class NaiveBayesClassifier implements IClassifier {
 
         for (ClassificationClass classificationClass : classificationClasses) {
             double p_documentClass = getClassProbability(classificationClass);
-
+            //TODO optimalizace class probability a term occurrence
             for (String feature : features) {
                 int termOccurence = getTermOccurrence(feature, classificationClass);
 

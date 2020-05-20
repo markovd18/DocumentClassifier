@@ -6,10 +6,10 @@ import feature.IFeatureAlgorithm;
 import feature.MutualInformation;
 import feature.TFIDF;
 import feature.TermFrequency;
-import utils.ClassificationClass;
-import utils.Document;
-import utils.FileLoader;
+import utils.*;
 
+import javax.swing.*;
+import java.awt.*;
 import java.util.List;
 
 /**
@@ -47,10 +47,15 @@ public class DocumentClassifierApp {
      * Number of features that will represent each document.
      */
     public static final int FEATURE_COUNT = 30;
-    /**
-     * File loader for loading data.
-     */
-    private FileLoader fileLoader;
+
+    private List<ClassificationClass> classificationClasses;
+
+    private List<Document> trainingSet;
+
+    private IClassifier classifier;
+
+    private IFeatureAlgorithm featureAlgorithm;
+
 
     public static void main(String[] args) {
         DocumentClassifierApp documentClassifierApp = new DocumentClassifierApp();
@@ -70,12 +75,107 @@ public class DocumentClassifierApp {
                 break;
             case CLASSIFYING_PARAMS_COUNT:
                 System.out.println("Executing input classification...");
+                doInputClassification(args[0]);
                 //TODO klasifikace textu z GUI
                 break;
             default:
                 System.out.println("Invalid number of parameters inserted!");
                 break;
         }
+    }
+
+    /**
+     * Executes user input classification process.
+     *
+     * @param modelName name of loaded model
+     */
+    private void doInputClassification(String modelName) {
+        FileLoader fileLoader = new FileLoader();
+        Model model = fileLoader.loadModel(modelName);
+
+        if (model == null) {
+            System.out.println("Model not found! (name: " + modelName + ")");
+            return;
+        }
+
+        this.classificationClasses = fileLoader.loadClassificationClasses(model.getClassificationClassesFile());
+        this.trainingSet = model.getTrainingSet();
+        switch (model.getFeatureAlgorithm()) {
+            case TF_FEATURE_ALG:
+                this.featureAlgorithm = new TermFrequency();
+                break;
+            case TF_IDF_FEATURE_ALG:
+                this.featureAlgorithm = new TFIDF(trainingSet);
+                break;
+            case MI_FEATURE_ALG:
+                this.featureAlgorithm = new MutualInformation(trainingSet);
+                break;
+            default:
+                System.out.println("Invalid feature algorithm name! (name: " + model.getFeatureAlgorithm() + ")");
+                return;
+        }
+
+        switch (model.getClassifier()) {
+            case NAIVE_BAYES_CLASSIFIER:
+                this.classifier = new NaiveBayesClassifier(trainingSet, classificationClasses);
+                break;
+            default:
+                System.out.println("Invalid classifier name! (name: " + model.getClassifier() + ")");
+                return;
+        }
+
+        createGui(modelName);
+    }
+
+    /**
+     * Creates simple GUI for input classification.
+     */
+    private void createGui(String modelName) {
+        JFrame frame = new JFrame();
+
+        JPanel centerPanel = new JPanel();
+        centerPanel.setPreferredSize(new Dimension(640, 320));
+        frame.setMaximumSize(new Dimension(640, 320));
+        frame.setMinimumSize(new Dimension(640, 320));
+
+        frame.setLayout(new BorderLayout());
+        frame.add(centerPanel, BorderLayout.CENTER);
+
+        TextArea inputTextArea = new TextArea();
+
+        JButton classifyBtn = new JButton("Classify");
+        Label classLabel = new Label("Classified category: ");
+        classifyBtn.addActionListener(listener -> {
+            classLabel.setText("Classified category: " + classifyUserInput(inputTextArea.getText()));
+        });
+        centerPanel.add(inputTextArea);
+        centerPanel.add(classifyBtn);
+
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.add(new Label("Model name: " + modelName));
+
+        bottomPanel.add(classLabel);
+
+        frame.add(bottomPanel, BorderLayout.PAGE_END);
+        frame.setTitle("Document classifier");
+        frame.pack();
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+    }
+
+    /**
+     * Classifies user input in given string.
+     *
+     * @param userInput user input
+     * @return name of classification class
+     */
+    private String classifyUserInput(String userInput) {
+        Document input = new Document();
+        input.setContent(userInput);
+
+        featureAlgorithm.createFeatures(input, FEATURE_COUNT);
+        return classifier.classifyDocument(input).get(0).getName();
     }
 
     /**
@@ -105,15 +205,26 @@ public class DocumentClassifierApp {
             System.out.println("mi - mutual information algorithm");
             return;
         }
-        fileLoader = new FileLoader();
-        List<ClassificationClass> classificationClasses = fileLoader.loadClassificationClasses(classesFile);
-        List<Document> trainingSet = fileLoader.loadDataSet(trainingSetFolder);
-        createFeatures(featureAlgorithm, trainingSet);
+        FileLoader fileLoader = new FileLoader();
+        classificationClasses = fileLoader.loadClassificationClasses(classesFile);
 
+        System.out.println("Loading training set...");
+        trainingSet = fileLoader.loadDataSet(trainingSetFolder);
+
+        System.out.println("Loading testing set...");
         List<Document> testingSet = fileLoader.loadDataSet(testingSetFolder);
         createFeatures(featureAlgorithm, testingSet);
         classifyDocuments(classifier, trainingSet, testingSet, classificationClasses);
 
+        Model model = new Model(modelName);
+        model.setTrainingSet(trainingSet);
+        model.setFeatureAlgorithm(featureAlgorithm);
+        model.setClassifier(classifier);
+        model.setClassificationClassesFile(classesFile);
+
+        System.out.println("Saving model as \"" + modelName + "\"...");
+        FileSaver fileSaver = new FileSaver();
+        fileSaver.saveModel(model);
     }
 
     /**
@@ -145,7 +256,6 @@ public class DocumentClassifierApp {
      * @param documents      list of documents to create features for
      */
     private void createFeatures(String featureAlgName, List<Document> documents) {
-        IFeatureAlgorithm featureAlgorithm;
 
         switch (featureAlgName) {
             case TF_FEATURE_ALG:
@@ -179,7 +289,6 @@ public class DocumentClassifierApp {
      */
     private void classifyDocuments(String classifierName, List<Document> trainingSet, List<Document> testingSet,
                                    List<ClassificationClass> classificationClasses) {
-        IClassifier classifier;
 
         switch (classifierName) {
             case NAIVE_BAYES_CLASSIFIER:
@@ -190,23 +299,24 @@ public class DocumentClassifierApp {
                 return;
         }
 
-        double numOfClassifiedUnits = 0;     //double to evade integer division
+        double numOfClassifiedDocuments = testingSet.size();     //double to evade integer division
         int numOfCorrectlyClassified = 0;
         System.out.println("Classifying documents...");
         for (Document document : testingSet) {
             List<ClassificationClass> classified = classifier.classifyDocument(document);
-            numOfClassifiedUnits += document.getClassificationClasses().size();
 
             for (ClassificationClass classificationClass : classified) {
                 if (document.getClassificationClasses().contains(classificationClass)) {
                     numOfCorrectlyClassified++;
+                    break;
                 }
             }
         }
-        double accuracy = numOfCorrectlyClassified / numOfClassifiedUnits;
+        double accuracy = numOfCorrectlyClassified / numOfClassifiedDocuments;
         System.out.println("Classification complete.");
-        System.out.println("Number of recognised classification classes: " + numOfClassifiedUnits);
-        System.out.println("Number of correctly recognised classification classes: " + numOfCorrectlyClassified);
+        System.out.println("Number of classified documents: " + numOfClassifiedDocuments);
+        System.out.println("Number of correctly classified documents: " + numOfCorrectlyClassified);
         System.out.println("Accuracy: " + accuracy);
     }
+
 }

@@ -10,7 +10,7 @@ import java.util.Objects;
  *
  * @author <a href=mailto:markovd@students.zcu.cz>David Markov</a>
  */
-public class FileLoader {
+public class FileLoader extends ModelOperator {
 
     /**
      * Buffered reader to load data.
@@ -50,6 +50,7 @@ public class FileLoader {
                 }
             }
             document.setContent(buffer.toString().replaceAll("[^a-zA-Zá-žÁ-Ž ]", "").toLowerCase());
+            reader.close();
             return document;
 
         } catch (FileNotFoundException fileNotFoundException) {
@@ -115,5 +116,16 @@ public class FileLoader {
             System.out.println("File containing classification classes not found! (" + filePath + ")");
             return null;
         }
+    }
+
+    /**
+     * Loads trained model with given name. Returns null if given file name is not found.
+     *
+     * @param modelName name of the model (and it's file)
+     * @return loaded model
+     */
+    public Model loadModel(String modelName) {
+        Model model = new Model(modelName);
+        return model;
     }
 }
