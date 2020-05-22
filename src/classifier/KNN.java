@@ -15,7 +15,7 @@ public class KNN implements IClassifier {
     /**
      * Number of nearest neighbours to find.
      */
-    private static final int K = 3;
+    private static final int K = 1;
 
     /**
      * List of documents in model.
