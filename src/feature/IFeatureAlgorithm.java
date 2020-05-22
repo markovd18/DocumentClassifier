@@ -12,8 +12,7 @@ public interface IFeatureAlgorithm {
     /**
      * Creates feature vector from the content of passed {@link Document}
      *
-     * @param document     document for which we want to create features
-     * @param featureCount number of features we want to create
+     * @param document document for which we want to create features
      */
-    void createFeatures(Document document, int featureCount);
+    void createFeatures(Document document);
 }

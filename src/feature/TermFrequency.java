@@ -3,7 +3,6 @@ package feature;
 import utils.Document;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -12,18 +11,17 @@ import java.util.Map;
  *
  * @author <a href=mailto:markovd@students.zcu.cz>David Markov</a>
  */
-public class TermFrequency extends FeatureSelector implements IFeatureAlgorithm {
+public class TermFrequency implements IFeatureAlgorithm {
+
 
     @Override
-    public void createFeatures(Document document, int featureCount) {
-        if (document == null || document.getContent().isEmpty() || featureCount == 0) {
+    public void createFeatures(Document document) {
+        if (document == null || document.getContent().isEmpty()) {
             return;
         }
 
         Map<String, Double> termFrequencies = computeTermFrequencies(document);
-        List<String> features = selectFeatures(termFrequencies, featureCount);
-
-        document.setFeatures(features);
+        document.setFeatures(termFrequencies);
     }
 
     /**
@@ -54,4 +52,6 @@ public class TermFrequency extends FeatureSelector implements IFeatureAlgorithm 
         }
         return termFrequencies;
     }
+
+
 }

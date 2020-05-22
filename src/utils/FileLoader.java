@@ -1,9 +1,9 @@
 package utils;
 
+import app.DocumentClassifierApp;
+
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Utility class to load data from files.
@@ -125,7 +125,92 @@ public class FileLoader extends ModelOperator {
      * @return loaded model
      */
     public Model loadModel(String modelName) {
-        Model model = new Model(modelName);
-        return model;
+        try {
+            reader = new BufferedReader(new FileReader(modelName + MODEL_FILE_EXTENSION));
+            Model model = new Model(modelName);
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                switch (line) {
+                    case MODEL_CLASSIFICATION_CLASSES_FILE_TAG:
+                        model.setClassificationClassesFile(reader.readLine());
+                        break;
+                    case MODEL_FEATURE_ALGORITHM_TAG:
+                        model.setFeatureAlgorithm(reader.readLine());
+                        break;
+                    case MODEL_CLASSIFIER_TAG:
+                        loadClassifier(model);
+                        break;
+                    case MODEL_TRAINING_SET_TAG:
+                        model.setTrainingSet(new ArrayList<>());
+                        break;
+                    case MODEL_DOCUMENT_TAG:
+                        loadModelDocument(model);
+                        break;
+                    default:
+                        System.out.println("Invalid model file format!");
+                        reader.close();
+                        return null;
+                }
+            }
+
+            reader.close();
+            return model;
+
+        } catch (IOException fileNotFoundException) {
+            System.out.println("Model file not found! (path: " + modelName + MODEL_FILE_EXTENSION + ")");
+            return null;
+        }
+
+    }
+
+    /**
+     * Loads classifier data into the model
+     *
+     * @param model loaded model
+     */
+    private void loadClassifier(Model model) throws IOException {
+        model.setClassifier(reader.readLine());
+
+        if (model.getClassifier().equals(DocumentClassifierApp.NAIVE_BAYES_CLASSIFIER)) {
+            model.setTotalUniqueWords(Integer.parseInt(reader.readLine()));
+            Map<String, Double> totalWordsMap = new HashMap<>();
+            String[] uniqueWordsInClasses = reader.readLine().split(" ");
+            for (String totalWordsInClass : uniqueWordsInClasses) {
+                String[] classWordsPair = totalWordsInClass.split(";");
+                totalWordsMap.put(classWordsPair[0], Double.parseDouble(classWordsPair[1]));
+            }
+            model.setTotalWordsInClass(totalWordsMap);
+        }
+    }
+
+    /**
+     * Loads document from model file and stores it into training set of given model.
+     *
+     * @param model loaded model
+     * @throws IOException thrown when error occurs
+     */
+    private void loadModelDocument(Model model) throws IOException {
+        Document document = new Document();
+
+        List<ClassificationClass> classificationClasses = new ArrayList<>();
+        String[] classes = reader.readLine().split(" ");
+
+        for (String clazz : classes) {
+            classificationClasses.add(new ClassificationClass(clazz));
+        }
+        document.setClassificationClasses(classificationClasses);
+
+        Map<String, Double> documentFeatures = new HashMap<>();
+        String[] features = reader.readLine().split(" ");
+        StringBuilder content = new StringBuilder();
+        for (String feature : features) {
+            String[] featureParts = feature.split(";");
+            documentFeatures.put(featureParts[0], Double.parseDouble(featureParts[1]));
+            content.append(featureParts[0]).append(" ");
+        }
+        document.setFeatures(documentFeatures);
+        document.setContent(content.toString());
+        model.getTrainingSet().add(document);
     }
 }

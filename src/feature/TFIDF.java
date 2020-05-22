@@ -12,6 +12,10 @@ import java.util.Map;
  * @author <a href=mailto:markovd@students.zcu.cz>David Markov</a>
  */
 public class TFIDF extends TermFrequency {
+
+    /**
+     * List of documents to search for term occurrencies.
+     */
     private final List<Document> documents;
 
     public TFIDF(List<Document> documents) {
@@ -19,8 +23,8 @@ public class TFIDF extends TermFrequency {
     }
 
     @Override
-    public void createFeatures(Document document, int featureCount) {
-        if (document == null || document.getContent().isEmpty() || featureCount == 0) {
+    public void createFeatures(Document document) {
+        if (document == null || document.getContent().isEmpty()) {
             return;
         }
 
@@ -31,8 +35,7 @@ public class TFIDF extends TermFrequency {
             pair.setValue(pair.getValue() * idf);
         }
 
-        List<String> features = selectFeatures(tfidfMap, featureCount);
-        document.setFeatures(features);
+        document.setFeatures(tfidfMap);
     }
 
     /**

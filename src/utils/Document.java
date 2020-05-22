@@ -1,6 +1,7 @@
 package utils;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Document to be classified or to train the classifier by.
@@ -20,9 +21,9 @@ public class Document {
     private List<ClassificationClass> classificationClasses;
 
     /**
-     * List of features (words) representing this document, selected by feature any {@link feature.IFeatureAlgorithm}
+     * List of features representing this document, selected by feature any {@link feature.IFeatureAlgorithm}
      */
-    private List<String> features;
+    private Map<String, Double> features;
 
     /**
      * Returns content of this document.
@@ -65,7 +66,7 @@ public class Document {
      *
      * @return vector of features representing this document
      */
-    public List<String> getFeatures() {
+    public Map<String, Double> getFeatures() {
         return features;
     }
 
@@ -74,7 +75,7 @@ public class Document {
      *
      * @param features desired vector of features
      */
-    public void setFeatures(List<String> features) {
+    public void setFeatures(Map<String, Double> features) {
         this.features = features;
     }
 }

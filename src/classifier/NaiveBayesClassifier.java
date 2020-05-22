@@ -21,41 +21,44 @@ public class NaiveBayesClassifier implements IClassifier {
      */
     private final List<ClassificationClass> classificationClasses;
     /**
-     * Stores number of unique words in each classification class.
+     * Sum of values of all the words in each class.
      */
-    private final Map<String, Integer> totalWordsInClass;
+    private Map<String, Double> totalWordsInClass;
     /**
-     * Number of possible (unique) words in training set.
+     * Sum of unique words in training set.
      */
-    private int possibleCorpusWords;
+    private int totalUniqueWords;
+
 
     public NaiveBayesClassifier(List<Document> documents, List<ClassificationClass> classificationClasses) {
         this.documents = documents;
         this.classificationClasses = classificationClasses;
-        this.possibleCorpusWords = 0;
-        totalWordsInClass = new HashMap<>();
     }
 
     @Override
     public List<ClassificationClass> classifyDocument(Document document) {
-        if (document == null || document.getContent().isEmpty() || document.getFeatures().isEmpty()) {
+        if (document == null || document.getContent().isEmpty()) {
             return null;
         }
-        if (possibleCorpusWords == 0) {
+        if (totalUniqueWords == 0 && totalWordsInClass == null) {
+            this.totalWordsInClass = new HashMap<>();
             getWordCounts();
         }
 
         List<ClassificationClass> documentClasses = new ArrayList<>();
-        List<String> features = document.getFeatures();
         Map<ClassificationClass, Double> classProbabilities = new HashMap<>();
 
         for (ClassificationClass classificationClass : classificationClasses) {
             double p_documentClass = getClassProbability(classificationClass);
-            //TODO optimalizace class probability a term occurrence
-            for (String feature : features) {
-                int termOccurence = getTermOccurrence(feature, classificationClass);
 
-                double p_wordClass = (termOccurence + 1.0) / (totalWordsInClass.get(classificationClass.getName()) + possibleCorpusWords);
+            for (String word : document.getContent().split(" ")) {
+                if (word.isEmpty()) {
+                    continue;
+                }
+
+                double termOccurence = getTermOccurrence(word, classificationClass);
+
+                double p_wordClass = (termOccurence + 1.0) / (this.totalWordsInClass.get(classificationClass.getName()) + totalUniqueWords);
                 // + slova v klasifikovanem dokumentu ??
                 p_documentClass *= p_wordClass;
             }
@@ -73,21 +76,13 @@ public class NaiveBayesClassifier implements IClassifier {
      * @param classificationClass classification class we look into
      * @return number of occurrences of given term
      */
-    private int getTermOccurrence(String term, ClassificationClass classificationClass) {
+    private double getTermOccurrence(String term, ClassificationClass classificationClass) {
         int termOccurrence = 0;
 
         for (Document document : documents) {
             if (document.getClassificationClasses().contains(classificationClass)) {
-                String[] words = document.getContent().split(" ");
-
-                for (String word : words) {
-                    if (word.isEmpty()) {
-                        continue;
-                    }
-
-                    if (word.equals(term)) {
-                        termOccurrence++;
-                    }
+                if (document.getFeatures().containsKey(term)) {
+                    termOccurrence += document.getFeatures().get(term);
                 }
             }
         }
@@ -100,33 +95,37 @@ public class NaiveBayesClassifier implements IClassifier {
      */
     private void getWordCounts() {
         Map<String, List<String>> uniqueWordsInClass = new HashMap<>();
+        List<String> uniqueWords = new ArrayList<>();
+
         for (ClassificationClass classificationClass : classificationClasses) {
             uniqueWordsInClass.put(classificationClass.getName(), new ArrayList<>());
         }
 
         for (Document document : documents) {
             String[] terms = document.getContent().split(" ");
-            List<String> uniqueTerms = new ArrayList<>();
 
             for (String term : terms) {
                 if (term.isEmpty()) {
                     continue;
                 }
-                if (!uniqueTerms.contains(term)) {
-                    uniqueTerms.add(term);
-                    this.possibleCorpusWords++;
+                if (!uniqueWords.contains(term)) {
+                    uniqueWords.add(term);
                 }
+
                 for (ClassificationClass docClass : document.getClassificationClasses()) {
                     if (!uniqueWordsInClass.get(docClass.getName()).contains(term)) {
                         uniqueWordsInClass.get(docClass.getName()).add(term);
+                    }
+                    if (totalWordsInClass.containsKey(docClass.getName())) {
+                        this.totalWordsInClass.put(docClass.getName(), this.totalWordsInClass.get(docClass.getName()) + document.getFeatures().get(term));
+                    } else {
+                        this.totalWordsInClass.put(docClass.getName(), document.getFeatures().get(term));
                     }
                 }
             }
         }
 
-        for (ClassificationClass classificationClass : classificationClasses) {
-            totalWordsInClass.put(classificationClass.getName(), uniqueWordsInClass.get(classificationClass.getName()).size());
-        }
+        this.totalUniqueWords = uniqueWords.size();
     }
 
     /**
@@ -149,5 +148,41 @@ public class NaiveBayesClassifier implements IClassifier {
         }
 
         return documentsInClass / documents.size();
+    }
+
+    /**
+     * Returns sums of values of all words in each classification class
+     *
+     * @return sums of values of all words in each classification class
+     */
+    public Map<String, Double> getTotalWordsInClass() {
+        return totalWordsInClass;
+    }
+
+    /**
+     * Sets sums of values of all words in each classification class
+     *
+     * @param totalWordsInClass sums of values of all words in each classification class
+     */
+    public void setTotalWordsInClass(Map<String, Double> totalWordsInClass) {
+        this.totalWordsInClass = totalWordsInClass;
+    }
+
+    /**
+     * Returns number of unique words in training set
+     *
+     * @return number of unique words in training set
+     */
+    public int getTotalUniqueWords() {
+        return totalUniqueWords;
+    }
+
+    /**
+     * Sets number of unique words in training set to a given nimber
+     *
+     * @param totalUniqueWords number of unique words in training set
+     */
+    public void setTotalUniqueWords(int totalUniqueWords) {
+        this.totalUniqueWords = totalUniqueWords;
     }
 }

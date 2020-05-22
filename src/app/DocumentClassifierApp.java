@@ -1,10 +1,11 @@
 package app;
 
 import classifier.IClassifier;
+import classifier.KNN;
 import classifier.NaiveBayesClassifier;
 import feature.IFeatureAlgorithm;
-import feature.MutualInformation;
 import feature.TFIDF;
+import feature.TermBinary;
 import feature.TermFrequency;
 import utils.*;
 
@@ -32,6 +33,10 @@ public class DocumentClassifierApp {
      */
     public static final String NAIVE_BAYES_CLASSIFIER = "bayes";
     /**
+     * String representing name of {@link KNN} passed as parameter in command-line.
+     */
+    public static final String KNN_CLASSIFIER = "knn";
+    /**
      * String representing name of {@link TermFrequency} algorithm, passed as parameter in command-line.
      */
     public static final String TF_FEATURE_ALG = "tf";
@@ -40,20 +45,28 @@ public class DocumentClassifierApp {
      */
     public static final String TF_IDF_FEATURE_ALG = "tfidf";
     /**
-     * String representing name of {@link MutualInformation} algorithm, passed as parameter in command-line.
+     * String representing name of {@link TermFrequency} algorithm, passed as parameter in command-line.
      */
-    public static final String MI_FEATURE_ALG = "mi";
-    /**
-     * Number of features that will represent each document.
-     */
-    public static final int FEATURE_COUNT = 30;
+    public static final String BIN_FEATURE_ALG = "binary";
 
+    /**
+     * List of available classification classes.
+     */
     private List<ClassificationClass> classificationClasses;
 
+    /**
+     * Training set of documents.
+     */
     private List<Document> trainingSet;
 
+    /**
+     * Classifier used to classify documents / input.
+     */
     private IClassifier classifier;
 
+    /**
+     * Feature algorithm used to compute features of each document.
+     */
     private IFeatureAlgorithm featureAlgorithm;
 
 
@@ -76,7 +89,6 @@ public class DocumentClassifierApp {
             case CLASSIFYING_PARAMS_COUNT:
                 System.out.println("Executing input classification...");
                 doInputClassification(args[0]);
-                //TODO klasifikace textu z GUI
                 break;
             default:
                 System.out.println("Invalid number of parameters inserted!");
@@ -107,8 +119,8 @@ public class DocumentClassifierApp {
             case TF_IDF_FEATURE_ALG:
                 this.featureAlgorithm = new TFIDF(trainingSet);
                 break;
-            case MI_FEATURE_ALG:
-                this.featureAlgorithm = new MutualInformation(trainingSet);
+            case BIN_FEATURE_ALG:
+                this.featureAlgorithm = new TermBinary();
                 break;
             default:
                 System.out.println("Invalid feature algorithm name! (name: " + model.getFeatureAlgorithm() + ")");
@@ -117,7 +129,13 @@ public class DocumentClassifierApp {
 
         switch (model.getClassifier()) {
             case NAIVE_BAYES_CLASSIFIER:
-                this.classifier = new NaiveBayesClassifier(trainingSet, classificationClasses);
+                NaiveBayesClassifier classifier = new NaiveBayesClassifier(trainingSet, classificationClasses);
+                classifier.setTotalUniqueWords(model.getTotalUniqueWords());
+                classifier.setTotalWordsInClass(model.getTotalWordsInClass());
+                this.classifier = classifier;
+                break;
+            case KNN_CLASSIFIER:
+                this.classifier = new KNN(trainingSet);
                 break;
             default:
                 System.out.println("Invalid classifier name! (name: " + model.getClassifier() + ")");
@@ -135,23 +153,23 @@ public class DocumentClassifierApp {
 
         JPanel centerPanel = new JPanel();
         centerPanel.setPreferredSize(new Dimension(640, 320));
-        frame.setMaximumSize(new Dimension(640, 320));
-        frame.setMinimumSize(new Dimension(640, 320));
-
+        frame.setResizable(false);
         frame.setLayout(new BorderLayout());
         frame.add(centerPanel, BorderLayout.CENTER);
 
         TextArea inputTextArea = new TextArea();
 
         JButton classifyBtn = new JButton("Classify");
+        JPanel bottomPanel = new JPanel();
         Label classLabel = new Label("Classified category: ");
         classifyBtn.addActionListener(listener -> {
             classLabel.setText("Classified category: " + classifyUserInput(inputTextArea.getText()));
+            bottomPanel.validate();
         });
         centerPanel.add(inputTextArea);
         centerPanel.add(classifyBtn);
 
-        JPanel bottomPanel = new JPanel();
+
         bottomPanel.add(new Label("Model name: " + modelName));
 
         bottomPanel.add(classLabel);
@@ -174,8 +192,13 @@ public class DocumentClassifierApp {
         Document input = new Document();
         input.setContent(userInput);
 
-        featureAlgorithm.createFeatures(input, FEATURE_COUNT);
-        return classifier.classifyDocument(input).get(0).getName();
+        featureAlgorithm.createFeatures(input);
+        List<ClassificationClass> resultClass = classifier.classifyDocument(input);
+        if (resultClass != null && !resultClass.isEmpty()) {
+            return resultClass.get(0).getName();
+        } else {
+            return "";
+        }
     }
 
     /**
@@ -194,7 +217,7 @@ public class DocumentClassifierApp {
             System.out.println("No classifier with this name found! (passed name: " + classifier + ")");
             System.out.println("Available classifiers:\n<passed_name> - <description>");
             System.out.println("bayes - Naive Bayes classifier");
-            //TODO druhý klasifikátor
+            System.out.println("knn - k-nearest neighbours classifier");
             return;
         }
         if (!isFeatureAlgorithm(featureAlgorithm)) {
@@ -202,7 +225,7 @@ public class DocumentClassifierApp {
             System.out.println("Available feature algorithms:\n<passed_name> - <description>");
             System.out.println("tf - term frequency (document frequency) algorithm");
             System.out.println("tfidf - term frequency-inverse document frequency algorithm");
-            System.out.println("mi - mutual information algorithm");
+            System.out.println("binary - binary feature algorithm");
             return;
         }
         FileLoader fileLoader = new FileLoader();
@@ -210,6 +233,7 @@ public class DocumentClassifierApp {
 
         System.out.println("Loading training set...");
         trainingSet = fileLoader.loadDataSet(trainingSetFolder);
+        createFeatures(featureAlgorithm, trainingSet);
 
         System.out.println("Loading testing set...");
         List<Document> testingSet = fileLoader.loadDataSet(testingSetFolder);
@@ -221,10 +245,15 @@ public class DocumentClassifierApp {
         model.setFeatureAlgorithm(featureAlgorithm);
         model.setClassifier(classifier);
         model.setClassificationClassesFile(classesFile);
-
+        if (this.classifier instanceof NaiveBayesClassifier) {
+            NaiveBayesClassifier bayes = (NaiveBayesClassifier) this.classifier;
+            model.setTotalUniqueWords(bayes.getTotalUniqueWords());
+            model.setTotalWordsInClass(bayes.getTotalWordsInClass());
+        }
         System.out.println("Saving model as \"" + modelName + "\"...");
         FileSaver fileSaver = new FileSaver();
         fileSaver.saveModel(model);
+        System.out.println("Model \"" + modelName + "\" saved.");
     }
 
     /**
@@ -234,8 +263,7 @@ public class DocumentClassifierApp {
      * @return true if classifier with given name exists
      */
     public boolean isClassifier(String classifierName) {
-        //TODO druhý klasifikátor
-        return classifierName.equals(NAIVE_BAYES_CLASSIFIER);
+        return classifierName.equals(NAIVE_BAYES_CLASSIFIER) || classifierName.equals(KNN_CLASSIFIER);
     }
 
     /**
@@ -246,7 +274,7 @@ public class DocumentClassifierApp {
      */
     public boolean isFeatureAlgorithm(String featureAlgName) {
         return featureAlgName.equals(TF_FEATURE_ALG) || featureAlgName.equals(TF_IDF_FEATURE_ALG)
-                || featureAlgName.equals(MI_FEATURE_ALG);
+                || featureAlgName.equals(BIN_FEATURE_ALG);
     }
 
     /**
@@ -264,8 +292,8 @@ public class DocumentClassifierApp {
             case TF_IDF_FEATURE_ALG:
                 featureAlgorithm = new TFIDF(documents);
                 break;
-            case MI_FEATURE_ALG:
-                featureAlgorithm = new MutualInformation(documents);
+            case BIN_FEATURE_ALG:
+                featureAlgorithm = new TermBinary();
                 break;
             default:
                 System.out.println("Invalid feature algorithm name passed! (passed name: " + featureAlgName + ")");
@@ -274,7 +302,7 @@ public class DocumentClassifierApp {
 
         System.out.println("Computing features...");
         for (Document document : documents) {
-            featureAlgorithm.createFeatures(document, FEATURE_COUNT);
+            featureAlgorithm.createFeatures(document);
         }
         System.out.println("Features for document set computed.");
     }
@@ -289,10 +317,13 @@ public class DocumentClassifierApp {
      */
     private void classifyDocuments(String classifierName, List<Document> trainingSet, List<Document> testingSet,
                                    List<ClassificationClass> classificationClasses) {
-
+        System.out.println("Classifying documents...");
         switch (classifierName) {
             case NAIVE_BAYES_CLASSIFIER:
                 classifier = new NaiveBayesClassifier(trainingSet, classificationClasses);
+                break;
+            case KNN_CLASSIFIER:
+                classifier = new KNN(trainingSet);
                 break;
             default:
                 System.out.println("Invalid classifier name passed! (passed name: " + classifierName + ")");
@@ -301,7 +332,6 @@ public class DocumentClassifierApp {
 
         double numOfClassifiedDocuments = testingSet.size();     //double to evade integer division
         int numOfCorrectlyClassified = 0;
-        System.out.println("Classifying documents...");
         for (Document document : testingSet) {
             List<ClassificationClass> classified = classifier.classifyDocument(document);
 
