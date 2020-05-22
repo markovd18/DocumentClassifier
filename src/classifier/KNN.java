@@ -61,7 +61,7 @@ public class KNN implements IClassifier {
             }
         }
         List<ClassificationClass> result = new ArrayList<>();
-        result.add(Collections.max(classificationClasses.entrySet(), Comparator.comparingInt(Map.Entry::getValue)).getKey());
+        result.add(Collections.min(classificationClasses.entrySet(), Comparator.comparingInt(Map.Entry::getValue)).getKey());
         return result;
     }
 }
