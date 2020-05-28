@@ -32,8 +32,8 @@ public class KNN implements IClassifier {
             return null;
         }
         Map<Document, Double> distances = new HashMap<>();
-        double distance = 0;
         for (Document trainingDocument : documents) {
+            double distance = 0;
             for (Map.Entry<String, Double> wordValue : document.getFeatures().entrySet()) {
                 double value = 0;
                 try {
@@ -41,7 +41,7 @@ public class KNN implements IClassifier {
                 } catch (NullPointerException e) {
                     // if not found, we let value at 0
                 }
-                distance = (wordValue.getValue() - value) *
+                distance += (wordValue.getValue() - value) *
                         (wordValue.getValue() - value);
             }
             distance = Math.sqrt(distance);
